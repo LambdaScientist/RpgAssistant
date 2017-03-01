@@ -7,7 +7,8 @@ main = undefined
 --TODO: Add Pretty print
 --TODO: Add monoid for these types to prevent duplicates from appearing...Maybe?
 --TODO: Add empty meta type
---TODO: Add 
+--TODO: Add Player calc
+--TODO: Finish Attack Calc
 data ResourceDrain = SpellLevelIncrease Int | ManaRequirement Int deriving (Show) 
 data DamageType = Piercing | Bludgeoning | Slashing | Fire | Acid | Cold | Lightning | NoType deriving (Show) 
 data AbilityType = Strength | Dexterity | Intelligence | Constitution | Wisdom | Charisma | NoAbilityType deriving (Show) 
