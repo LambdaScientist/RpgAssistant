@@ -9,6 +9,7 @@ main = undefined
 --TODO: Add empty meta type
 --TODO: Add Player calc
 --TODO: Finish Attack Calc
+--TODO: Add some quickCheck tests
 data ResourceDrain = SpellLevelIncrease Int | ManaRequirement Int deriving (Show) 
 data DamageType = Piercing | Bludgeoning | Slashing | Fire | Acid | Cold | Lightning | NoType deriving (Show) 
 data AbilityType = Strength | Dexterity | Intelligence | Constitution | Wisdom | Charisma | NoAbilityType deriving (Show) 
