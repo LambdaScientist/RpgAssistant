@@ -7,10 +7,7 @@ import Data.Monoid
 import qualified Text.PrettyPrint.HughesPJClass as TPH
 
 
-
-
 main = undefined 
---TODO: Add Pretty print
 --TODO: Add monoid for these types to prevent duplicates from appearing...Maybe?
 --TODO: Add empty meta type
 --TODO: Add Player calc
