@@ -8,13 +8,6 @@ import qualified Text.PrettyPrint.HughesPJClass as TPH
 
 
 main = undefined 
---TODO: Add monoid for these types to prevent duplicates from appearing...Maybe?
---TODO: Add empty meta type
---TODO: Add Player calc
---TODO: Finish Attack Calc
---TODO: Add some quickCheck tests
---TODO: Add lenses
---TODO: Think about round timers
 
 
 --Pretty Print functions-----------------------------------
