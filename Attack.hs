@@ -22,6 +22,10 @@ pPrint :: forall a. TPH.Pretty a => a -> TPH.Doc
 pPrint = TPH.pPrint
 nest = TPH.nest
 
+
+printStuff :: forall a. TPH.Pretty a => a -> IO ()
+printStuff = putStrLn.TPH.render.pPrint
+
 shxt :: Show a => a -> TPH.Doc
 shxt = TPH.text . show
 
@@ -38,23 +42,24 @@ mapListDoc = TPH.sep.map pPrint
 data ResourceDrain = SpellLevelIncrease Int | ManaRequirement Int deriving (Show) 
 data DamageType = Piercing | Bludgeoning | Slashing | Fire | Acid | Cold | Lightning | NoType deriving (Show) 
 data AbilityType = Strength | Dexterity | Intelligence | Constitution | Wisdom | Charisma | NoAbilityType deriving (Show) 
-data Dice = D2 | D3 | D4 | D6 | D8 | D10 | D12 | D20 | D Int | FlatMod Int deriving (Show) 
+data GameValue = D Int | Flat Int deriving (Show) 
 
 type Name = String
 type Description = String 
 type DmgModifiers = (Int, Description)
-type DiceCount = Int
-
-data DiceTotal = DT { dc   :: DiceCount 
-                    , die  :: Dice 
-                    , dt   :: DamageType 
-                    , desc :: Description } deriving (Show) 
-instance TPH.Pretty DiceTotal where
+type ValueCount = Int
+type Level = Int
+type Tags = [String]
+data GameValueTotal = DT { dc   :: ValueCount 
+                         , die  :: GameValue 
+                         , dt   :: DamageType 
+                         , desc :: Description } deriving (Show) 
+instance TPH.Pretty GameValueTotal where
   pPrint DT{..} = txt "Damage dice:" <<+>> (shxt dc <<>> txt "x" <<>> shxt die)
             $$+$$ txt "Damage is of type:" <<+>> shxt dt
             $$+$$ txt  "Dice from:" <<+>> txt desc
 
-data DamageAssistant = DA { dice :: [DiceTotal]
+data DamageAssistant = DA { dice :: [GameValueTotal]
                           , abil :: [AbilityType] 
                           , flatBonuses :: [DmgModifiers]
                           }  deriving (Show)                          
@@ -69,33 +74,37 @@ instance TPH.Pretty DamageAssistant where
 
 data Attack = Atk { atkName :: Name
                   , meta :: [MetaAttack]
-                  , dmg  :: [DiceTotal]
+                  , dmg  :: [GameValueTotal]
                   , descriptionAtk :: [Description]
+                  , atkTags :: Tags
                   } deriving (Show) 
 instance TPH.Pretty Attack where
   pPrint Atk{..} = txt "Attack has name:" <<+>> shxt atkName
              $$+$$ nest 2 (
                      nest 2 ( txt "Attack has base damage:" $$+$$ nest 2 (mapListDoc dmg)
                      $$+$$ txt "Attack has base description:" <<+>> nest 2 (mapListDoc descriptionAtk)
-                     $$+$$ txt "Attack has modifers:" $$+$$ nest 2 (mapListDoc meta)))
+                     $$+$$ txt "Attack has modifers:" $$+$$ nest 2 (mapListDoc meta)
+                     $$+$$ txt "Tags:" <<+>> shxt atkTags))
 instance Monoid Attack where
-    mappend (Atk n1 a b c) (Atk n2 x y z) = Atk (n1 <> "/" <> n1) (a <> x) (b <> y) (c <> z)
-    mempty = Atk "" [] [] []
+    mappend (Atk n1 a b c d) (Atk n2 w x y z) = Atk (n1 <> "/" <> n1) (a <> w) (b <> x) (c <> y) (d <> z) 
+    mempty = Atk "" [] [] [] []
 
 data MetaAttack = MetaAtk { maName           :: Name
-                          , addDmg           :: [DiceTotal]
+                          , addDmg           :: [GameValueTotal]
                           , addResourceDrain :: [ResourceDrain] 
                           , descriptionMeta  :: [Description]
+                          , metaTags :: Tags
                           } deriving (Show) 
 instance Monoid MetaAttack where
-    mappend (MetaAtk n1 a b c) (MetaAtk n2 x y z) = MetaAtk (n1 <> "/" <> n1) (a <> x) (b <> y) (c <> z)
-    mempty = MetaAtk "" [] [] []
+    mappend (MetaAtk n1 a b c d) (MetaAtk n2 w x y z) = MetaAtk (n1 <> "/" <> n1) (a <> w) (b <> x) (c <> y) (d <> z) 
+    mempty = MetaAtk "" [] [] [] []
 instance TPH.Pretty MetaAttack where
   pPrint MetaAtk{..} = txt "Modifer Name:" <<+>> shxt maName             
                  $$+$$ nest 2 (
                           nest 2 ( txt "Attack does addtional:" $$+$$ nest 2 (mapListDoc addDmg)
                           $$+$$ txt "Attack uses addtional:" $$+$$ nest 2 (mapListShowDoc addResourceDrain)
-                          $$+$$ txt "Attack has addtional description:" $$+$$ nest 2 (mapListDoc descriptionMeta)))
+                          $$+$$ txt "Attack has addtional description:" $$+$$ nest 2 (mapListDoc descriptionMeta)
+                          $$+$$ txt "Tags:" <<+>> shxt metaTags))
 
 type Score = Int
 type TempScoreMod = Int
@@ -109,6 +118,8 @@ data Player = Plr { plyName   :: Name
                   , conScore  :: AbilityScore
                   , wisScore  :: AbilityScore
                   , charScore :: AbilityScore 
+                  , playerClass :: [GameClass]
+                  , playerActions :: Actions
                   } deriving (Show) 
 instance TPH.Pretty Player where
   pPrint Plr{..} = txt "Player has stats:"
@@ -118,31 +129,64 @@ instance TPH.Pretty Player where
              $$+$$ txt "Constitution Score:" <<+>> shxt conScore 
              $$+$$ txt "Wisdom Score:" <<+>> shxt wisScore 
              $$+$$ txt "Charisma Score:" <<+>> shxt charScore
+             $$+$$ txt "Class Levels:" $$+$$ nest 2 (mapListDoc playerClass)
+             $$+$$ txt "Player Actions:" $$+$$ nest 2 (mapListDoc playerActions)
+
+data GameClass = PlayableClass { className  :: Name
+                               , level      :: Level
+                               , playerTags :: Tags
+                               } deriving (Show) 
+instance TPH.Pretty GameClass where
+  pPrint PlayableClass{..} = txt "PlayableClass has stats:" $$+$$ ( nest 2 
+                                                                        (txt "Class Name:" <<+>> shxt className 
+                                                                        $$+$$ txt "Level:" <<+>> shxt level
+                                                                        $$+$$ txt "Tags:" <<+>> shxt playerTags) )
+type Actions = [Action]
+data Action = AttackAction { actionName :: Name
+                           , atkAction  :: Attack
+                           } deriving (Show) 
+instance TPH.Pretty Action where
+  pPrint AttackAction{..} = txt "Atack Action:" $$+$$ ( nest 2 
+                                                      (txt "Action Name:" <<+>> shxt actionName 
+                                                      $$+$$ txt "Level:" <<+>> pPrint atkAction) )
 
 
 -- Tools 
 tryAll2Combos :: Monoid a => [a] -> [a] -> [a]
-tryAll2Combos [] ys = []
-tryAll2Combos xs [] = []
+tryAll2Combos [] _ = []
 tryAll2Combos (x:xs) ys = (map (x<>) ys) ++ (tryAll2Combos xs ys)
 
 
 -- Examples 
-makeSingleMeta n x y z = MetaAtk n [x] [y] [z]
+
+simpleClass = PlayableClass "Wizard" 10 ["PLayer Tag"]
+simpleActionList = [AttackAction ("Attack: " ++ atkName x) x  | x <- take 5 makeNewAtks]
+
+playerExample = Plr "Example McExampleFace" 
+                    (Strength, 1, 1)
+                    (Dexterity, 2, 1)
+                    (Intelligence, 3, 1)
+                    (Constitution, 4, 1)
+                    (Wisdom, 5, 1)
+                    (Charisma, 6, 1)
+                    [simpleClass] 
+                    simpleActionList
+
+makeSingleMeta n x y z = MetaAtk n [x] [y] [z] ["Normal Tag"]
 makeDmgHelper x y z = DA [x] [y] [z]
-makeSingleAttack n di m de = Atk n [m] [di] [de]
+makeSingleAttack n di m de = Atk n [m] [di] [de] ["Meta Tag"]
 
 fireMeta = makeSingleMeta name moreDmg moreDrain moreInfo
     where
         name = "Fire Bonus" 
-        moreDmg = DT 3 D4 Fire "fire extra"
+        moreDmg = DT 3 (D 4) Fire "fire extra"
         moreDrain = SpellLevelIncrease 1
         moreInfo = "Knocks target prone too"
         
 acidMeta = makeSingleMeta name moreDmg moreDrain moreInfo
     where 
         name = "Acid Bonus" 
-        moreDmg = DT 6 D6 Acid "acid extra"
+        moreDmg = DT 6 (D 6) Acid "acid extra"
         moreDrain = SpellLevelIncrease 1
         moreInfo = "Adds Acid dmg"
         
@@ -156,7 +200,7 @@ coldMeta = makeSingleMeta name moreDmg moreDrain moreInfo
 slashingeMeta = makeSingleMeta name moreDmg moreDrain moreInfo
     where 
         name = "Slashing Bonus" 
-        moreDmg = DT 2 D20 Slashing "meta slash"
+        moreDmg = DT 2 (D 20) Slashing "meta slash"
         moreDrain = ManaRequirement 1
         moreInfo = "Baro"
 
@@ -169,13 +213,13 @@ makeNewMeta = tryAll2Combos metaList metaList
 atk1 = makeSingleAttack name moreDmg fireMeta moreInfo
     where 
         name = "Bludgeoning Bonus" 
-        moreDmg = DT 3 D4 Bludgeoning "Bludgeoning thing"
+        moreDmg = DT 3 (D 4) Bludgeoning "Bludgeoning thing"
         moreInfo = "Knocks target prone too"
         
 atk2 = makeSingleAttack name moreDmg slashingeMeta moreInfo
     where 
         name = "Slashing Attack" 
-        moreDmg = DT 6 D6 Slashing "desc of Slashing"
+        moreDmg = DT 6 (D 6) Slashing "desc of Slashing"
         moreInfo = "Adds Acid dmg"
         
 atk3 = makeSingleAttack name moreDmg acidMeta moreInfo
@@ -187,7 +231,7 @@ atk3 = makeSingleAttack name moreDmg acidMeta moreInfo
 atk4 = makeSingleAttack name moreDmg (coldMeta<>coldMeta) moreInfo
     where 
         name = "Big Slash" 
-        moreDmg = DT 5 D20 Slashing "FOOOOBAAAARRR"
+        moreDmg = DT 5 (D 20) Slashing "FOOOOBAAAARRR"
         moreInfo = "Atk4"
 
 makeNewAtks = tryAll2Combos metaList metaList

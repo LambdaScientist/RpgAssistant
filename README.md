@@ -12,15 +12,16 @@ Currently supports:
 
 TODO List:
 - Add monoid for these types to prevent duplicates from appearing
-    * After we figure out how we want to do the implementationn
-- Get Almsi to help design game behavior
-    - Crit handled inside or outside of attack?
-    - Help with the rule changes
-    - Add Player calc
-    - Finish Attack Calc
-    - Think about round timers
+  * After we figure out how we want to do the implementationn
+  * Would need to start looking at Tags to make sure no bonus of the same type stacks 
 - Add some quickCheck tests
 - Decide if lenses are needed
-    * Research how we could use them
+  * Research how we could use them
+- Add a simple charater sheet reader, player is currently simple
+  * Should I do this as a flexible parser?
+
+
+
+
 
 
